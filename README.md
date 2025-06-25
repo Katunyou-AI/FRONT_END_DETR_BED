@@ -1,61 +1,94 @@
 # V89 DETE-BED
 
-ระบบตรวจจับความเคลื่อนไหวและแจ้งเตือน (Detection and Alert System)
+ระบบตรวจจับความเคลื่อนไหวและแจ้งเตือนอัจฉริยะ
 
-## รายละเอียดโปรเจค
-
-V89 DETE-BED เป็นระบบตรวจจับความเคลื่อนไหวผ่านกล้องวงจรปิด พร้อมระบบแจ้งเตือนอัตโนมัติ เหมาะสำหรับการใช้งานในบ้าน หรือสำนักงานเพื่อรักษาความปลอดภัย
-
-### คุณสมบัติหลัก
-
-- รองรับการเชื่อมต่อกล้องวงจรปิดหลายรูปแบบ (RTSP, RTMP, HLS)
-- ระบบตรวจจับความเคลื่อนไหวอัตโนมัติ
-- การแจ้งเตือนแบบเรียลไทม์
-- การตั้งค่าช่วงเวลาการแจ้งเตือน
-- จัดเก็บบันทึกกิจกรรมและการแจ้งเตือน
-- หน้า Dashboard สำหรับมอนิเตอร์
-
-## การติดตั้งระบบ
-
-### ข้อกำหนด
-
-- Node.js v18 หรือใหม่กว่า
-- npm v8 หรือใหม่กว่า
-
-### ขั้นตอนการติดตั้ง
-
-1. Clone โปรเจคและติดตั้ง dependencies
+## การติดตั้ง
 
 ```bash
-git clone https://github.com/yourusername/v89-dete-bed.git
-cd v89-dete-bed
+# ติดตั้ง dependencies
 npm install
+
+# รัน development server
+npm run dev
+
+# build สำหรับ production
+npm run build
 ```
 
-2. สร้างไฟล์ .env (ใช้ .env.example เป็นตัวอย่าง)
+## การตั้งค่า Firebase
 
-```bash
-cp .env.example .env
+1. สร้างโปรเจค Firebase ที่ [Firebase Console](https://console.firebase.google.com/)
+2. เปิดใช้งาน Authentication และเพิ่ม Google เป็น Sign-in method
+3. คัดลอกค่า configuration จาก Project settings และนำมาใส่ในไฟล์ `.env`
+
+## เทคโนโลยีที่ใช้
+- Vue 3
+- Vite
+- Firebase Authentication
+- Pinia
+- Vue Router
+
+VITE_FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
 ```
 
-3. แก้ไขการตั้งค่าใน .env ตามความเหมาะสม
-
-4. เริ่มระบบสำหรับการพัฒนา
-
+### 3. รันโปรเจ็ค:
 ```bash
 npm run dev
 ```
 
+## การแก้ไขปัญหา
+
+### ถ้าเจอปัญหา PowerShell execution policy:
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+### ถ้าเจอปัญหา dependency:
+```bash
+# ลบทุกอย่างและติดตั้งใหม่
+rm -rf node_modules package-lock.json
+npm cache clean --force
+npm install
+```
+
+## คุณสมบัติ
+
+- ✅ การเข้าสู่ระบบแบบปกติ (username/password)
+- ✅ การเข้าสู่ระบบด้วย Google (Firebase)
+- ✅ จัดการกล้องวงจรปิด
+- ✅ ระบบมอนิเตอร์แบบเรียลไทม์
+- ✅ การแจ้งเตือนอัตโนมัติ
+- ✅ ระบบการตั้งค่าการแจ้งเตือน
+
 ## การใช้งาน
 
-1. เข้าสู่ระบบด้วยข้อมูลทดสอบ:
+### ข้อมูลสำหรับทดสอบ
+- **Username**: admin
+- **Password**: admin123
 
-   - ชื่อผู้ใช้: admin
-   - รหัสผ่าน: admin123
+หรือใช้การเข้าสู่ระบบด้วย Google
 
-2. ไปที่หน้า "จัดการกล้อง" เพื่อเพิ่มกล้องใหม่เข้าระบบ
+## เทคโนโลยีที่ใช้
 
-3. ไปที่หน้า "มอนิเตอร์" เพื่อเริ่มการตรวจจับและรับการแจ้งเตือน
+- Vue 3 + Composition API
+- Pinia (State Management)
+- Vue Router
+- Firebase Authentication
+- Vite
+
+## โครงสร้างโปรเจ็ค
+
+```
+src/
+├── components/       # Vue components
+├── views/           # หน้าต่างๆ ของแอป
+├── stores/          # Pinia stores
+├── services/        # API services
+├── config/          # ไฟล์ config
+└── router/          # Vue Router config
+```
 
 ## การตั้งค่าสำหรับการพัฒนา
 

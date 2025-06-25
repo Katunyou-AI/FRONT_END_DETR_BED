@@ -92,12 +92,6 @@ watch(
           เกี่ยวกับ
         </RouterLink>
         <RouterLink
-          :to="'/notification-example'"
-          :class="{ active: currentRoutePath === '/notification-example' }"
-        >
-          ตัวอย่างแจ้งเตือน
-        </RouterLink>
-        <RouterLink
           :to="'/notification-settings'"
           :class="{ active: currentRoutePath === '/notification-settings' }"
         >
