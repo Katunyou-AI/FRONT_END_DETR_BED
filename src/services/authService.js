@@ -1,7 +1,7 @@
 /**
  * Service จัดการกับ API เกี่ยวกับการยืนยันตัวตนและผู้ใช้
  */
-import { API_ENDPOINTS } from '@/config/api'
+import { API_BASE_URL, API_ENDPOINTS } from '@/config/api'
 
 export default {
   /**
@@ -9,24 +9,22 @@ export default {
    */
   login: async (username, password) => {
     try {
-      // ใช้การจำลองถ้ายังไม่มี API จริง
-      if (username === 'admin' && password === 'admin123') {
-        const response = {
-          token: 'mock-jwt-token-' + Date.now(),
-          user: {
-            id: 1,
-            username: 'admin',
-            name: 'ผู้ดูแลระบบ',
-            role: 'admin',
-          },
-        }
-
-        // เก็บ token ลง localStorage เพื่อใช้งานต่อไป
-        localStorage.setItem('authToken', response.token)
-        return response
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.LOGIN}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
       }
-
-      throw new Error('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
+      const data = await response.json()
+      // เก็บ token และ user ลง localStorage
+      localStorage.setItem('authToken', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+      return data
     } catch (error) {
       throw new Error(error.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
     }

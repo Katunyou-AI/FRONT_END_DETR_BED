@@ -26,25 +26,30 @@ export const API_ENDPOINTS = {
     STREAMS: (id) => `/cameras/${id}/streams`,
   },
 
-  // เหตุการณ์
-  EVENTS: {
-    BASE: '/events',
-    DETAIL: (id) => `/events/${id}`,
-    BY_CAMERA: (cameraId) => `/cameras/${cameraId}/events`,
+  // detection
+  INFERENCE: {
+    BASE: '/inference',
   },
 
-  // การแจ้งเตือน
-  NOTIFICATIONS: {
-    BASE: '/notifications',
-    READ: (id) => `/notifications/${id}/read`,
-    MARK_ALL_READ: '/notifications/read-all',
-  },
+  // // เหตุการณ์
+  // EVENTS: {
+  //   BASE: '/events',
+  //   DETAIL: (id) => `/events/${id}`,
+  //   BY_CAMERA: (cameraId) => `/cameras/${cameraId}/events`,
+  // },
 
-  // การตั้งค่า
-  SETTINGS: {
-    BASE: '/settings',
-    NOTIFICATION: '/settings/notification',
-  },
+  // // การแจ้งเตือน
+  // NOTIFICATIONS: {
+  //   BASE: '/notifications',
+  //   READ: (id) => `/notifications/${id}/read`,
+  //   MARK_ALL_READ: '/notifications/read-all',
+  // },
+
+  // // การตั้งค่า
+  // SETTINGS: {
+  //   BASE: '/settings',
+  //   NOTIFICATION: '/settings/notification',
+  // },
 }
 
 // HTTP status codes ที่ใช้บ่อย

@@ -92,8 +92,8 @@ async function request(endpoint, method = 'GET', data = null, withAuth = true) {
     options.headers['Authorization'] = `Bearer ${authToken}`
   }
 
-  // เพิ่ม body สำหรับ POST, PUT, PATCH requests
-  if (data && ['POST', 'PUT', 'PATCH'].includes(method)) {
+  // เพิ่ม body สำหรับ POST, PUT requests
+  if (data && ['POST', 'PUT'].includes(method)) {
     options.body = JSON.stringify(data)
   }
 
@@ -162,8 +162,6 @@ export default {
       return await request(endpoint, 'GET', null, withAuth)
     } catch (error) {
       console.error(`[API] GET ${endpoint} failed:`, error)
-      // ถ้ายังไม่มี backend ให้ใช้ mock data
-      console.log(`[API] Mock GET ${endpoint}`)
       return {}
     }
   },
@@ -174,8 +172,6 @@ export default {
       return await request(endpoint, 'POST', data, withAuth)
     } catch (error) {
       console.error(`[API] POST ${endpoint} failed:`, error)
-      // ถ้ายังไม่มี backend ให้ใช้ mock data
-      console.log(`[API] Mock POST ${endpoint}`, data)
       return {}
     }
   },
@@ -186,20 +182,6 @@ export default {
       return await request(endpoint, 'PUT', data, withAuth)
     } catch (error) {
       console.error(`[API] PUT ${endpoint} failed:`, error)
-      // ถ้ายังไม่มี backend ให้ใช้ mock data
-      console.log(`[API] Mock PUT ${endpoint}`, data)
-      return {}
-    }
-  },
-
-  // PATCH request
-  patch: async (endpoint, data, withAuth = true) => {
-    try {
-      return await request(endpoint, 'PATCH', data, withAuth)
-    } catch (error) {
-      console.error(`[API] PATCH ${endpoint} failed:`, error)
-      // ถ้ายังไม่มี backend ให้ใช้ mock data
-      console.log(`[API] Mock PATCH ${endpoint}`, data)
       return {}
     }
   },
@@ -210,8 +192,6 @@ export default {
       return await request(endpoint, 'DELETE', null, withAuth)
     } catch (error) {
       console.error(`[API] DELETE ${endpoint} failed:`, error)
-      // ถ้ายังไม่มี backend ให้ใช้ mock data
-      console.log(`[API] Mock DELETE ${endpoint}`)
       return {}
     }
   },
