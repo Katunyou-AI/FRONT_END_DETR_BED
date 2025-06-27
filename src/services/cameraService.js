@@ -1,7 +1,12 @@
 /**
  * Service จัดการกับ API เกี่ยวกับกล้อง
  */
-import { API_ENDPOINTS } from '@/config/api'
+import { API_BASE_URL, API_ENDPOINTS } from '@/config/api'
+
+// Helper to get auth token from localStorage
+function getAuthToken() {
+  return localStorage.getItem('authToken')
+}
 
 export default {
   /**
@@ -9,15 +14,15 @@ export default {
    */
   getAllCameras: async () => {
     try {
-      // ดึงข้อมูลจาก localStorage เป็น fallback
-      const storedCameras = localStorage.getItem('cameras')
-      let mockCameras = []
-
-      if (storedCameras) {
-        mockCameras = JSON.parse(storedCameras)
+      const token = getAuthToken()
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.CAMERAS.BASE}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      })
+      if (!response.ok) {
+        throw new Error('Failed to fetch cameras')
       }
-
-      return mockCameras
+      const data = await response.json()
+      return data
     } catch (error) {
       console.error('Error fetching cameras:', error)
       throw error
@@ -29,17 +34,15 @@ export default {
    */
   getCameraById: async (cameraId) => {
     try {
-      // ดึงข้อมูลจาก localStorage เป็น fallback
-      const storedCameras = localStorage.getItem('cameras')
-      if (storedCameras) {
-        const cameras = JSON.parse(storedCameras)
-        const camera = cameras.find((cam) => cam.id === cameraId)
-        if (camera) {
-          return camera
-        }
+      const token = getAuthToken()
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.CAMERAS.DETAIL(cameraId)}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      })
+      if (!response.ok) {
+        throw new Error('Failed to fetch cameras')
       }
-
-      throw new Error('Camera not found')
+      const data = await response.json()
+      return data
     } catch (error) {
       console.error(`Error fetching camera ${cameraId}:`, error)
       throw error
@@ -51,21 +54,20 @@ export default {
    */
   addCamera: async (cameraData) => {
     try {
-      // แต่ตอนนี้จะใช้ข้อมูลจาก localStorage ก่อน
-      const storedCameras = localStorage.getItem('cameras')
-      let cameras = []
-
-      if (storedCameras) {
-        cameras = JSON.parse(storedCameras)
+      const token = getAuthToken()
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.CAMERAS.BASE}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(cameraData),
+      })
+      if (!response.ok) {
+        throw new Error('Failed to add camera')
       }
-
-      // เพิ่มกล้องใหม่
-      cameras.push(cameraData)
-
-      // บันทึกกลับไป localStorage
-      localStorage.setItem('cameras', JSON.stringify(cameras))
-
-      return cameraData
+      const data = await response.json()
+      return data
     } catch (error) {
       console.error('Error adding camera:', error)
       throw error
@@ -77,20 +79,20 @@ export default {
    */
   updateCamera: async (cameraId, cameraData) => {
     try {
-      // ใช้ localStorage จนกว่าจะมี API จริง
-      const storedCameras = localStorage.getItem('cameras')
-      if (storedCameras) {
-        const cameras = JSON.parse(storedCameras)
-        const index = cameras.findIndex((cam) => cam.id === cameraId)
-
-        if (index !== -1) {
-          cameras[index] = { ...cameras[index], ...cameraData }
-          localStorage.setItem('cameras', JSON.stringify(cameras))
-          return cameras[index]
-        }
+      const token = getAuthToken()
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.CAMERAS.DETAIL(cameraId)}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(cameraData),
+      })
+      if (!response.ok) {
+        throw new Error('Failed to update camera')
       }
-
-      throw new Error('Camera not found')
+      const data = await response.json()
+      return data
     } catch (error) {
       console.error(`Error updating camera ${cameraId}:`, error)
       throw error
@@ -102,69 +104,68 @@ export default {
    */
   deleteCamera: async (cameraId) => {
     try {
-      // ใช้ localStorage จนกว่าจะมี API จริง
-      const storedCameras = localStorage.getItem('cameras')
-      if (storedCameras) {
-        const cameras = JSON.parse(storedCameras)
-        const newCameras = cameras.filter((cam) => cam.id !== cameraId)
-        localStorage.setItem('cameras', JSON.stringify(newCameras))
-        return { success: true }
+      const token = getAuthToken()
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.CAMERAS.DETAIL(cameraId)}`, {
+        method: 'DELETE',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      })
+      if (!response.ok) {
+        throw new Error('Failed to delete camera')
       }
-
-      return { success: false }
+      return { success: true }
     } catch (error) {
       console.error(`Error deleting camera ${cameraId}:`, error)
       throw error
     }
   },
 
-  /**
-   * อัปเดตสถานะกล้อง
-   */
-  updateCameraStatus: async (cameraId, status) => {
-    try {
-      // ใช้ localStorage จนกว่าจะมี API จริง
-      const storedCameras = localStorage.getItem('cameras')
-      if (storedCameras) {
-        const cameras = JSON.parse(storedCameras)
-        const camera = cameras.find((cam) => cam.id === cameraId)
+  // /**
+  //  * อัปเดตสถานะกล้อง
+  //  */
+  // updateCameraStatus: async (cameraId, status) => {
+  //   try {
+  //     // ใช้ localStorage จนกว่าจะมี API จริง
+  //     const storedCameras = localStorage.getItem('cameras')
+  //     if (storedCameras) {
+  //       const cameras = JSON.parse(storedCameras)
+  //       const camera = cameras.find((cam) => cam.id === cameraId)
 
-        if (camera) {
-          camera.status = status
-          localStorage.setItem('cameras', JSON.stringify(cameras))
-          return { success: true, status }
-        }
-      }
+  //       if (camera) {
+  //         camera.status = status
+  //         localStorage.setItem('cameras', JSON.stringify(cameras))
+  //         return { success: true, status }
+  //       }
+  //     }
 
-      return { success: false }
-    } catch (error) {
-      console.error(`Error updating camera status ${cameraId}:`, error)
-      throw error
-    }
-  },
+  //     return { success: false }
+  //   } catch (error) {
+  //     console.error(`Error updating camera status ${cameraId}:`, error)
+  //     throw error
+  //   }
+  // },
 
-  /**
-   * ขอ stream URL สำหรับดูกล้องแบบเรียลไทม์
-   */
-  getStreamUrl: async (cameraId) => {
-    try {
-      // ใช้ localStorage จนกว่าจะมี API จริง
-      const storedCameras = localStorage.getItem('cameras')
-      if (storedCameras) {
-        const cameras = JSON.parse(storedCameras)
-        const camera = cameras.find((cam) => cam.id === cameraId)
+  // /**
+  //  * ขอ stream URL สำหรับดูกล้องแบบเรียลไทม์
+  //  */
+  // getStreamUrl: async (cameraId) => {
+  //   try {
+  //     // ใช้ localStorage จนกว่าจะมี API จริง
+  //     const storedCameras = localStorage.getItem('cameras')
+  //     if (storedCameras) {
+  //       const cameras = JSON.parse(storedCameras)
+  //       const camera = cameras.find((cam) => cam.id === cameraId)
 
-        if (camera) {
-          return {
-            streamUrl: camera.url || 'https://samplelib.com/lib/preview/mp4/sample-5s.mp4',
-          }
-        }
-      }
+  //       if (camera) {
+  //         return {
+  //           streamUrl: camera.url || 'https://samplelib.com/lib/preview/mp4/sample-5s.mp4',
+  //         }
+  //       }
+  //     }
 
-      throw new Error('Camera not found')
-    } catch (error) {
-      console.error(`Error getting stream for camera ${cameraId}:`, error)
-      throw error
-    }
-  },
+  //     throw new Error('Camera not found')
+  //   } catch (error) {
+  //     console.error(`Error getting stream for camera ${cameraId}:`, error)
+  //     throw error
+  //   }
+  // },
 }

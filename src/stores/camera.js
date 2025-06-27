@@ -37,29 +37,29 @@ export const useCameraStore = defineStore('camera', () => {
     selectedCamera.value = camera
   }
 
-  // ตั้งค่าสถานะกล้องที่เลือก
-  async function setSelectedCameraStatus(status) {
-    if (!selectedCamera.value) return
+  // // ตั้งค่าสถานะกล้องที่เลือก
+  // async function setSelectedCameraStatus(status) {
+  //   if (!selectedCamera.value) return
 
-    try {
-      // เรียกใช้ API
-      await cameraService.updateCameraStatus(selectedCamera.value.id, status)
+  //   try {
+  //     // เรียกใช้ API
+  //     await cameraService.updateCameraStatus(selectedCamera.value.id, status)
 
-      // อัพเดท state
-      selectedCamera.value.status = status
+  //     // อัพเดท state
+  //     selectedCamera.value.status = status
 
-      // อัพเดทกล้องในรายการด้วย
-      const index = cameras.value.findIndex((cam) => cam.id === selectedCamera.value.id)
-      if (index !== -1) {
-        cameras.value[index].status = status
-      }
+  //     // อัพเดทกล้องในรายการด้วย
+  //     const index = cameras.value.findIndex((cam) => cam.id === selectedCamera.value.id)
+  //     if (index !== -1) {
+  //       cameras.value[index].status = status
+  //     }
 
-      // อัพเดท localStorage
-      localStorage.setItem('cameras', JSON.stringify(cameras.value))
-    } catch (err) {
-      console.error('Error updating camera status:', err)
-    }
-  }
+  //     // อัพเดท localStorage
+  //     localStorage.setItem('cameras', JSON.stringify(cameras.value))
+  //   } catch (err) {
+  //     console.error('Error updating camera status:', err)
+  //   }
+  // }
 
   // ลบกล้อง รับเป็น id หรือ object
   async function removeCamera(camera) {
@@ -93,34 +93,34 @@ export const useCameraStore = defineStore('camera', () => {
     }
   }
 
-  // อัพเดทสถานะของกล้อง
-  async function updateCameraStatus(cameraId, status) {
-    isLoading.value = true
-    error.value = null
+  // // อัพเดทสถานะของกล้อง
+  // async function updateCameraStatus(cameraId, status) {
+  //   isLoading.value = true
+  //   error.value = null
 
-    try {
-      // เรียกใช้ API
-      await cameraService.updateCameraStatus(cameraId, status)
+  //   try {
+  //     // เรียกใช้ API
+  //     await cameraService.updateCameraStatus(cameraId, status)
 
-      // อัพเดท state
-      const camera = cameras.value.find((cam) => cam.id === cameraId)
-      if (camera) {
-        camera.status = status
+  //     // อัพเดท state
+  //     const camera = cameras.value.find((cam) => cam.id === cameraId)
+  //     if (camera) {
+  //       camera.status = status
 
-        // อัพเดตกล้องที่เลือกถ้าเป็นกล้องเดียวกัน
-        if (selectedCamera.value && selectedCamera.value.id === cameraId) {
-          selectedCamera.value.status = status
-        }
+  //       // อัพเดตกล้องที่เลือกถ้าเป็นกล้องเดียวกัน
+  //       if (selectedCamera.value && selectedCamera.value.id === cameraId) {
+  //         selectedCamera.value.status = status
+  //       }
 
-        // อัปเดต localStorage
-        localStorage.setItem('cameras', JSON.stringify(cameras.value))
-      }
-    } catch (err) {
-      error.value = err.message || 'เกิดข้อผิดพลาดในการอัพเดตสถานะกล้อง'
-    } finally {
-      isLoading.value = false
-    }
-  }
+  //       // อัปเดต localStorage
+  //       localStorage.setItem('cameras', JSON.stringify(cameras.value))
+  //     }
+  //   } catch (err) {
+  //     error.value = err.message || 'เกิดข้อผิดพลาดในการอัพเดตสถานะกล้อง'
+  //   } finally {
+  //     isLoading.value = false
+  //   }
+  // }
 
   // อัพเดทกล้อง
   async function updateCamera(cameraId, updatedData) {
@@ -215,9 +215,7 @@ export const useCameraStore = defineStore('camera', () => {
     selectCamera,
     removeCamera,
     updateCamera,
-    updateCameraStatus,
     cameraExists,
-    setSelectedCameraStatus,
     loadCameras,
   }
 })

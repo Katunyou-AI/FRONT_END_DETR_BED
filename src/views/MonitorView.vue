@@ -1,15 +1,17 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCameraStore } from '@/stores/camera'
 import { useNotificationStore } from '@/stores/notification'
 import { useAuthStore } from '@/stores/auth'
+import { useInferenceStore } from '@/stores/inference'
 import IconAlert from '@/components/icons/IconAlert.vue'
 import IconCamera from '@/components/icons/IconCamera.vue'
 
 const cameraStore = useCameraStore()
 const notificationStore = useNotificationStore()
 const authStore = useAuthStore()
+const inferenceStore = useInferenceStore()
 const router = useRouter()
 
 // State
@@ -18,6 +20,7 @@ const motionDetected = ref({})
 const riskLevel = ref({})
 const logs = ref([])
 const fullscreenCamera = ref(null) // เพิ่มตัวแปรสำหรับเก็บกล้องที่กำลังแสดงแบบเต็มจอ
+const previousFrames = ref({}) // เก็บ previous frame ของแต่ละกล้อง
 
 // Notification settings
 const notificationPeriod = ref({
@@ -121,13 +124,16 @@ function startMotionSimulation(camera) {
   // Set a random interval (5-15 seconds)
   const interval = Math.random() * 10000 + 5000
 
-  motionSimulationTimers.value[camera.id] = setTimeout(() => {
+  motionSimulationTimers.value[camera.id] = setTimeout(async () => {
     if (!activeMonitors.value[camera.id]) return
 
     // Simulate motion detection (50% chance)
     if (Math.random() > 0.5) {
       detectMotion(camera)
     }
+
+    // เรียกสกัดและส่งภาพทุกครั้งที่วน loop
+    await captureAndSendToInference(camera)
 
     // Continue the simulation
     startMotionSimulation(camera)
@@ -136,33 +142,8 @@ function startMotionSimulation(camera) {
 
 // Handle motion detection
 function detectMotion(camera) {
-  motionDetected.value[camera.id] = true
-
-  // Calculate risk level (1-10)
-  const currentRiskLevel = Math.floor(Math.random() * 10) + 1
-  riskLevel.value[camera.id] = currentRiskLevel
-
-  // Log the motion event
-  addLog(
-    'motion',
-    `ตรวจพบการเคลื่อนไหวจากกล้อง ${camera.name} (ระดับความเสี่ยง: ${currentRiskLevel}/10)`,
-  )
-
-  // Check if risk level is high enough for alert (> 7)
-  if (currentRiskLevel > 7) {
-    // Check if notifications are enabled for this time period
-    if (isWithinNotificationPeriod() && notificationPeriod.value.enabled) {
-      triggerAlert(camera, currentRiskLevel)
-    } else {
-      addLog('info', `การแจ้งเตือนจาก ${camera.name} ถูกข้ามเนื่องจากอยู่นอกช่วงเวลาที่กำหนด`)
-    }
-  }
-
-  // Reset motion detection after 3 seconds
-  setTimeout(() => {
-    motionDetected.value[camera.id] = false
-    riskLevel.value[camera.id] = 0
-  }, 3000)
+  // สกัดภาพและส่งไป inference ทันที
+  captureAndSendToInference(camera)
 }
 
 // Trigger an alert notification
@@ -221,7 +202,7 @@ function isWithinNotificationPeriod() {
 // Save notification settings to localStorage
 function saveNotificationSettings() {
   localStorage.setItem('notificationSettings', JSON.stringify(notificationPeriod.value))
-  addLog('info', 'บันทึกการตั้งค่าการแจ้งเตือนแล้ว')
+  addLog('info', `บันทึกการตั้งค่าการแจ้งเตือนเป็น ${notificationPeriod.value.start} ถึง ${notificationPeriod.value.end}`)
 }
 
 // Go to camera management
@@ -257,6 +238,104 @@ function toggleFullscreen(camera) {
     addLog('info', `กำลังดูกล้อง ${camera.name} แบบเต็มจอ`)
   }
 }
+
+// ดึง snapshot เป็นไฟล์ Blob โดยตรง (ไม่แปลง base64)
+async function fetchSnapshotBlob(url) {
+  try {
+    const res = await fetch(url, { mode: 'cors' })
+    return await res.blob()
+  } catch (err) {
+    addLog('alert', `ไม่สามารถดึง snapshot fallback ได้: ${err}`)
+    return null
+  }
+}
+
+// สกัดภาพจาก video หรือ img element เป็นไฟล์ Blob
+async function getVideoFrameBlob(cameraId, fallbackUrl) {
+  let el = document.querySelector(
+    `.camera-card[data-camera-id='${cameraId}'] video`
+  )
+  if (!el) {
+    el = document.querySelector(
+      `.camera-card[data-camera-id='${cameraId}'] img`
+    )
+  }
+  if (!el) return fallbackUrl ? await fetchSnapshotBlob(fallbackUrl) : null
+  const canvas = document.createElement('canvas')
+  canvas.width = el.videoWidth || el.naturalWidth || el.width
+  canvas.height = el.videoHeight || el.naturalHeight || el.height
+  const ctx = canvas.getContext('2d')
+  try {
+    ctx.drawImage(el, 0, 0, canvas.width, canvas.height)
+    return await new Promise((resolve) => {
+      canvas.toBlob((blob) => resolve(blob), 'image/jpeg')
+    })
+  } catch (e) {
+    // ถ้าเจอ SecurityError (CORS) ให้ fallback ไป fetch snapshot เป็นไฟล์
+    if (fallbackUrl) {
+      return await fetchSnapshotBlob(fallbackUrl)
+    }
+    addLog('alert', `SecurityError: ไม่สามารถสกัดภาพจากกล้อง (CORS)`) 
+    return null
+  }
+}
+
+// ฟังก์ชันสำหรับส่งภาพไป inference (แนบไฟล์)
+async function sendFrameToInference(camera, currentBlob, previousBlob) {
+  try {
+    // ดึงค่าการตั้งค่าการแจ้งเตือนจาก notificationPeriod
+    const cooldown_seconds = 10 // กำหนดค่าคงที่หรือดึงจาก settings อื่นได้
+    const [start_hour, start_minute] = notificationPeriod.value.start.split(":").map(Number)
+    const [end_hour, end_minute] = notificationPeriod.value.end.split(":").map(Number)
+
+    await inferenceStore.sendToInference({
+      camera_id: camera.id,
+      current_frame: currentBlob,
+      previous_frame: previousBlob,
+      cooldown_seconds,
+      start_hour,
+      start_minute,
+      end_hour,
+      end_minute,
+    })
+
+    addLog('info', `กล้อง ${camera.name} ส่งภาพ inference สำเร็จ | motion score: ${inferenceStore.result.motion_score} | pose: ${inferenceStore.result.pose}`)
+
+    // ตรวจสอบ response ถ้ามี alert ให้แจ้งเตือน
+    if (inferenceStore.result.alerted) {
+      triggerAlert(camera, inferenceStore.result.risk_level || 10)
+    }
+  } catch (err) {
+    addLog('alert', `ส่งภาพไปยัง inference ล้มเหลว: ${err}`)
+  }
+}
+
+// เรียกใช้ inference พร้อมเก็บ previous frame (ส่งเป็นไฟล์เท่านั้น)
+async function captureAndSendToInference(camera) {
+  await nextTick() // ให้ DOM update ก่อน
+  // รอ 1 วินาทีก่อนบันทึก frame ทุกครั้ง
+  await new Promise(resolve => setTimeout(resolve, 1000))
+  const fallbackUrl = 'http://192.168.8.2:8080/shot.jpg'
+  const currentBlob = await getVideoFrameBlob(camera.id, fallbackUrl)
+  const previousBlob = previousFrames.value[camera.id] || null
+
+  if (!previousBlob) {
+    // ถ้ายังไม่มี previous frame ให้เก็บ current ไว้ก่อนและยังไม่ต้องส่ง
+    previousFrames.value[camera.id] = currentBlob
+    return
+  }
+
+  // มี previous แล้ว ส่งทั้งคู่ไป inference
+  await sendFrameToInference(camera, currentBlob, previousBlob)
+  // อัปเดต previous frame เป็น current frame ล่าสุด
+  previousFrames.value[camera.id] = currentBlob
+}
+
+// Check if the URL is an image
+function isImageUrl(url) {
+  if (!url) return false
+  return /\.(jpg|jpeg|png|gif)(\?.*)?$/i.test(url)
+}
 </script>
 
 <template>
@@ -289,6 +368,7 @@ function toggleFullscreen(camera) {
               'camera-fullscreen': fullscreenCamera === camera.id,
               'camera-hidden': fullscreenCamera && fullscreenCamera !== camera.id,
             }"
+            :data-camera-id="camera.id"
           >
             <div class="camera-header">
               <h3 class="camera-title">{{ camera.name }}</h3>
@@ -331,14 +411,22 @@ function toggleFullscreen(camera) {
             </div>
 
             <div class="video-container">
-              <video
-                muted
-                loop
-                autoplay
-                :src="camera.url || 'https://samplelib.com/lib/preview/mp4/sample-5s.mp4'"
-                @error="camera.status = 'offline'"
-              ></video>
-
+              <!-- <template v-if="isImageUrl(camera.url)"> -->
+                <img
+                  :src="camera.url"
+                  alt="camera snapshot"
+                  style="width:100%;height:100%;object-fit:cover"
+                  @error="camera.status = 'offline'"
+                />
+              <!-- </template> -->
+              <!-- <template v-else>
+                <video
+                  muted
+                  autoplay
+                  :src="camera.url || 'https://samplelib.com/lib/preview/mp4/sample-5s.mp4'"
+                  @error="camera.status = 'offline'"
+                ></video>
+              </template> -->
               <div v-if="motionDetected[camera.id]" class="motion-alert">
                 <IconAlert /> ตรวจพบการเคลื่อนไหว
               </div>
